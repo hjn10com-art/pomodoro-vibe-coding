@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>專注力番茄鐘與白噪音播放器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#b5523b; --bg-deep:#8f3b28; --ink:#fff8f2; --soft:rgba(255,255,255,.14); --line:rgba(255,255,255,.28);
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --serif:"Noto Serif TC","Songti TC",serif;
+}
+body[data-mode="short"]{--bg:#3f9c88;--bg-deep:#2b7565}
+body[data-mode="long"]{--bg:#3b7ca6;--bg-deep:#295b7f}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:var(--sans);color:var(--ink);
+  background:radial-gradient(120% 90% at 50% 0%,var(--bg) 0%,var(--bg-deep) 100%);
+  transition:background .6s}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:3px}
+h1{font-family:var(--serif);font-size:1.1rem;font-weight:500;letter-spacing:.12em;text-align:center;margin:0;padding:1.4rem 1rem 0;opacity:.9}
+h2{font-family:var(--serif);font-size:1.05rem;font-weight:500;margin:0 0 1rem;letter-spacing:.08em}
+main{display:grid;grid-template-columns:1fr minmax(320px,1.3fr) 1fr;gap:2.5rem;max-width:1180px;margin:0 auto;padding:2rem 1.5rem 3rem;align-items:start}
+.timer{grid-column:2;grid-row:1;text-align:center;padding-top:1rem}
+.sounds{grid-column:1;grid-row:1}
+.todo{grid-column:3;grid-row:1}
+.modes{display:inline-flex;gap:.25rem;background:var(--soft);border-radius:999px;padding:.3rem}
+.modes button{border:0;background:transparent;padding:.5rem 1.1rem;border-radius:999px;font-size:.95rem;transition:background .2s}
+.modes button[aria-pressed="true"]{background:var(--ink);color:var(--bg-deep);font-weight:500}
+.ring{--ring:min(80vw,340px);position:relative;width:var(--ring);height:var(--ring);margin:2rem auto 1.8rem}
+.ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:3}
+.ring .track{stroke:var(--line)}
+.ring .bar{stroke:var(--ink);stroke-linecap:round;transition:stroke-dashoffset .3s linear}
+.time{position:absolute;inset:0;display:grid;place-items:center;font-weight:300;font-size:calc(var(--ring)*.26);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.ctrl{display:flex;gap:.8rem;justify-content:center}
+.ctrl button{border:1px solid var(--line);background:transparent;padding:.7rem 1.6rem;border-radius:12px;font-size:1rem;min-width:5.5rem}
+.ctrl button:hover{background:var(--soft)}
+.ctrl .go{background:var(--ink);color:var(--bg-deep);border-color:var(--ink);font-weight:700;min-width:7.5rem}
+.ctrl .go:hover{background:#fff}
+.eta{margin-top:1.2rem;min-height:1.4em;font-size:.95rem;opacity:.85}
+.count{margin-top:.2rem;font-size:.95rem;opacity:.85}
+.clock{text-align:center;padding:.5rem 1rem 0}
+.clock .tm{font-size:1.5rem;font-weight:300;font-variant-numeric:tabular-nums;letter-spacing:.06em}
+.clock .dt{font-size:.88rem;opacity:.8;margin-top:.1rem}
+.settings{display:flex;gap:.9rem;justify-content:center;margin-top:2rem;padding-top:1.4rem;border-top:1px solid var(--line)}
+.settings label{display:flex;flex-direction:column;align-items:center;gap:.4rem;font-size:.9rem}
+.settings input{width:4.8rem;text-align:center;border:1px solid var(--line);background:var(--soft);color:var(--ink);padding:.5rem .4rem;border-radius:10px;font:inherit}
+.settings input:disabled{opacity:.45;cursor:not-allowed}
+.hint{margin-top:.8rem;font-size:.82rem;opacity:.7}
+.stats{max-width:640px;margin:0 auto;padding:0 1.5rem 3.5rem}
+.stats table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.stats th,.stats td{padding:.65rem .4rem;text-align:center;border-top:1px solid var(--line)}
+.stats th{font-weight:500;font-size:.9rem;opacity:.8;border-top:0}
+.stats th:first-child,.stats td:first-child{text-align:left}
+.stats tr.today td{font-weight:700}
+.stats button{margin-top:1rem;border:1px solid var(--line);background:transparent;padding:.45rem 1rem;border-radius:10px;font-size:.88rem;opacity:.85}
+.stats button:hover{background:var(--soft)}
+.snd{display:grid;grid-template-columns:2.6rem 1fr;gap:.2rem .9rem;align-items:center;padding:.9rem 0;border-top:1px solid var(--line)}
+.snd:first-of-type{border-top:0}
+.snd button{grid-row:span 2;width:2.6rem;height:2.6rem;border-radius:50%;border:1px solid var(--line);background:transparent;display:grid;place-items:center}
+.snd button svg{width:1.1rem;height:1.1rem;fill:currentColor}
+.snd button[aria-pressed="true"]{background:var(--ink);color:var(--bg-deep)}
+.snd label{font-size:.98rem}
+input[type=range]{width:100%;accent-color:#fff}
+.add{display:flex;gap:.5rem;margin-bottom:.8rem}
+.add input{flex:1;min-width:0;border:1px solid var(--line);background:var(--soft);color:var(--ink);padding:.65rem .8rem;border-radius:10px;font:inherit}
+.add input::placeholder{color:rgba(255,255,255,.65)}
+.add button{border:0;background:var(--ink);color:var(--bg-deep);padding:0 1.1rem;border-radius:10px;font-weight:700}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;align-items:center;gap:.6rem;padding:.7rem 0;border-top:1px solid var(--line)}
+li .t{flex:1;text-align:left;background:none;border:0;padding:0;line-height:1.5;word-break:break-word}
+li.done .t{text-decoration:line-through;opacity:.55}
+li .x{border:0;background:none;opacity:.7;font-size:1.2rem;line-height:1;padding:.2rem .4rem}
+li .x:hover{opacity:1}
+.empty{opacity:.75;font-size:.92rem;padding:.4rem 0}
+@media (max-width:860px){
+  main{grid-template-columns:1fr;gap:2.2rem}
+  .timer,.sounds,.todo{grid-column:1}
+  .timer{grid-row:1}.sounds{grid-row:2}.todo{grid-row:3}
+}
+@media (prefers-reduced-motion:reduce){body{transition:none}.ring .bar{transition:none}}
+</style>
+</head>
+<body data-mode="work">
+<h1>專注力番茄鐘</h1>
+<div class="clock" aria-label="目前時間">
+  <div class="tm" id="clockTime">--:--:--</div>
+  <div class="dt" id="clockDate"></div>
+</div>
+<main>
+  <section class="timer" aria-label="番茄鐘">
+    <div class="modes" role="group" aria-label="切換模式">
+      <button data-mode="work" aria-pressed="true">專注</button>
+      <button data-mode="short" aria-pressed="false">短休息</button>
+      <button data-mode="long" aria-pressed="false">長休息</button>
+    </div>
+    <div class="ring">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle class="track" cx="50" cy="50" r="46"/>
+        <circle class="bar" id="bar" cx="50" cy="50" r="46"/>
+      </svg>
+      <div class="time" id="time" role="timer" aria-live="off">25:00</div>
+    </div>
+    <div class="ctrl">
+      <button class="go" id="start">開始</button>
+      <button id="pause">暫停</button>
+      <button id="reset">重置</button>
+    </div>
+    <div class="eta" id="eta"></div>
+    <div class="count" id="count">今天完成 0 個番茄</div>
+    <div class="settings" role="group" aria-label="自訂時間長度">
+      <label>專注（分鐘）<input type="number" min="1" max="120" step="1" data-mode="work" inputmode="numeric"></label>
+      <label>短休息（分鐘）<input type="number" min="1" max="120" step="1" data-mode="short" inputmode="numeric"></label>
+      <label>長休息（分鐘）<input type="number" min="1" max="120" step="1" data-mode="long" inputmode="numeric"></label>
+    </div>
+    <div class="hint">可設定 1–120 分鐘；計時中會暫時鎖定，暫停後即可修改</div>
+  </section>
+
+  <section class="sounds" aria-label="白噪音">
+    <h2>環境白噪音</h2>
+    <div id="soundList"></div>
+  </section>
+
+  <section class="todo" aria-label="待辦清單">
+    <h2>待辦清單</h2>
+    <div class="add">
+      <input id="taskInput" type="text" placeholder="這一輪要完成什麼？" maxlength="80" aria-label="新增任務">
+      <button id="addBtn">加入</button>
+    </div>
+    <ul id="tasks"></ul>
+  </section>
+</main>
+
+<section class="stats" aria-label="每日紀錄">
+  <h2>每日紀錄</h2>
+  <table>
+    <thead><tr><th>日期</th><th>番茄</th><th>短休息</th><th>長休息</th></tr></thead>
+    <tbody id="logBody"></tbody>
+  </table>
+  <button id="clearLog">清除紀錄</button>
+</section>
+
+<script>
+/* ===== 番茄鐘 ===== */
+const DEFAULT_MIN = {work:25, short:5, long:15};
+const clampMin = (v,f)=>{ v=Math.round(Number(v)); return (v>=1 && v<=120) ? v : f; };
+let mins = {...DEFAULT_MIN};
+try{ Object.assign(mins, JSON.parse(localStorage.getItem('pomo-mins')||'{}')); }catch(e){}
+for(const k in DEFAULT_MIN) mins[k]=clampMin(mins[k],DEFAULT_MIN[k]);
+const DURATIONS = {};
+const syncDur = ()=>{ for(const k in mins) DURATIONS[k]=mins[k]*60; };
+syncDur();
+const NAMES = {work:'專注', short:'短休息', long:'長休息'};
+let mode='work', remaining=DURATIONS.work, endAt=0, timerId=null;
+const $ = id => document.getElementById(id);
+const CIRC = 2*Math.PI*46;
+function setRing(sec){
+  const f=Math.min(1,Math.max(0,sec/DURATIONS[mode])), bar=$('bar');
+  bar.style.strokeDasharray=CIRC+' '+CIRC;
+  bar.style.strokeDashoffset=(CIRC*(1-f)).toFixed(2);
+  bar.style.opacity=f>0?1:0;
+}
+const fmt = s => String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+
+function render(){
+  $('time').textContent = fmt(remaining);
+  setRing(remaining);
+  document.title = (timerId ? fmt(remaining)+' ' : '')+NAMES[mode]+'｜番茄鐘';
+  $('start').textContent = (!timerId && remaining<DURATIONS[mode]) ? '繼續' : '開始';
+  document.querySelectorAll('.settings input').forEach(i=>i.disabled=!!timerId);
+  $('eta').textContent = timerId
+    ? '預計 '+new Date(endAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'})+' 結束'
+    : '';
+}
+function tick(){
+  remaining = Math.max(0, Math.round((endAt-Date.now())/1000));
+  render();
+  if(remaining>0) setRing((endAt-Date.now())/1000);
+  if(remaining<=0) finish();
+}
+function start(){
+  if(timerId) return;
+  if(remaining<=0) remaining=DURATIONS[mode];
+  endAt = Date.now()+remaining*1000;
+  timerId = setInterval(tick,250);
+  if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+  getCtx(); render();
+}
+function pause(){ clearInterval(timerId); timerId=null; render(); }
+function reset(){ pause(); remaining=DURATIONS[mode]; render(); }
+function setMode(m){
+  pause(); mode=m; remaining=DURATIONS[m];
+  document.body.dataset.mode=m;
+  document.querySelectorAll('.modes button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.mode===m));
+  render();
+}
+function finish(){
+  pause(); bell();
+  record(mode);
+  if('Notification' in window && Notification.permission==='granted'){
+    new Notification(mode==='work'?'專注結束，休息一下吧':'休息結束，準備開始專注');
+  }
+  remaining=0; $('time').textContent='00:00';
+  $('start').textContent='開始';
+}
+function bell(){
+  const c=getCtx(); if(!c) return;
+  [0,.45,.9].forEach(d=>{
+    const t=c.currentTime+d;
+    [880,1318].forEach((f,i)=>{
+      const o=c.createOscillator(), g=c.createGain();
+      o.type='sine'; o.frequency.value=f;
+      g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(i?0.12:0.3,t+.01);
+      g.gain.exponentialRampToValueAtTime(.0001,t+1.6);
+      o.connect(g).connect(c.destination); o.start(t); o.stop(t+1.7);
+    });
+  });
+}
+$('start').onclick=start; $('pause').onclick=pause; $('reset').onclick=reset;
+document.querySelectorAll('.modes button').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
+document.querySelectorAll('.settings input').forEach(inp=>{
+  inp.value=mins[inp.dataset.mode];
+  inp.onchange=()=>{
+    const k=inp.dataset.mode;
+    mins[k]=clampMin(inp.value,mins[k]); inp.value=mins[k];
+    syncDur();
+    try{ localStorage.setItem('pomo-mins',JSON.stringify(mins)); }catch(e){}
+    if(k===mode){ remaining=DURATIONS[k]; render(); }
+  };
+});
+
+/* ===== 白噪音（用 Web Audio 即時合成，不需外部音檔） ===== */
+let ctx=null;
+function getCtx(){
+  if(!ctx){ const A=window.AudioContext||window.webkitAudioContext; if(!A) return null; ctx=new A(); }
+  if(ctx.state==='suspended') ctx.resume();
+  return ctx;
+}
+function noiseBuffer(c,type){
+  const len=c.sampleRate*3, buf=c.createBuffer(1,len,c.sampleRate), d=buf.getChannelData(0);
+  let last=0;
+  for(let i=0;i<len;i++){
+    const w=Math.random()*2-1;
+    if(type==='brown'){ last=(last+0.02*w)/1.02; d[i]=last*3.5; } else d[i]=w;
+  }
+  return buf;
+}
+function loopNoise(c,type,out,filters){
+  const s=c.createBufferSource(); s.buffer=noiseBuffer(c,type); s.loop=true;
+  let node=s;
+  filters.forEach(([t,f,q])=>{ const b=c.createBiquadFilter(); b.type=t; b.frequency.value=f; if(q) b.Q.value=q; node.connect(b); node=b; });
+  node.connect(out); s.start(); return s;
+}
+const SOUNDS=[
+  {id:'rain', name:'雨聲', vol:.6, make(c,out,track){
+    track.src.push(loopNoise(c,'white',out,[['highpass',700],['lowpass',9000]]));
+    const low=c.createGain(); low.gain.value=.5; low.connect(out);
+    track.src.push(loopNoise(c,'brown',low,[['lowpass',500]]));
+  }},
+  {id:'cafe', name:'咖啡廳', vol:.6, make(c,out,track){
+    const m=c.createGain(); m.gain.value=.9; m.connect(out);
+    track.src.push(loopNoise(c,'brown',m,[['bandpass',420,.7]]));
+    const lfo=c.createOscillator(), lg=c.createGain(); lfo.frequency.value=.23; lg.gain.value=.35;
+    lfo.connect(lg).connect(m.gain); lfo.start(); track.src.push(lfo);
+    (function clink(){
+      track.timers.push(setTimeout(()=>{
+        const t=c.currentTime, o=c.createOscillator(), g=c.createGain();
+        o.type='sine'; o.frequency.value=2200+Math.random()*1800;
+        g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.12,t+.005); g.gain.exponentialRampToValueAtTime(.0001,t+.35);
+        o.connect(g).connect(out); o.start(t); o.stop(t+.4);
+        clink();
+      }, 1500+Math.random()*4500));
+    })();
+  }},
+  {id:'fire', name:'營火', vol:.6, make(c,out,track){
+    const b=c.createGain(); b.gain.value=.8; b.connect(out);
+    track.src.push(loopNoise(c,'brown',b,[['lowpass',380]]));
+    const buf=noiseBuffer(c,'white');
+    (function crackle(){
+      track.timers.push(setTimeout(()=>{
+        const t=c.currentTime, s=c.createBufferSource(), g=c.createGain(), f=c.createBiquadFilter();
+        s.buffer=buf; f.type='highpass'; f.frequency.value=1500+Math.random()*2500;
+        const dur=.02+Math.random()*.05;
+        g.gain.setValueAtTime(.35*Math.random()+.1,t); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+        s.connect(f).connect(g).connect(out); s.start(t,Math.random()*2,dur+.02);
+        crackle();
+      }, 60+Math.random()*450));
+    })();
+  }}
+];
+const ICON_PLAY='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+const ICON_PAUSE='<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+SOUNDS.forEach(s=>{
+  s.track={src:[],timers:[],on:false,gain:null};
+  const row=document.createElement('div'); row.className='snd';
+  row.innerHTML=`<button aria-pressed="false" aria-label="播放${s.name}">${ICON_PLAY}</button>
+    <label for="v-${s.id}">${s.name}</label>
+    <input id="v-${s.id}" type="range" min="0" max="100" value="${s.vol*100}" aria-label="${s.name}音量">`;
+  const btn=row.querySelector('button'), vol=row.querySelector('input');
+  btn.onclick=()=>{
+    const c=getCtx(); if(!c) return;
+    const t=s.track;
+    if(!t.on){
+      t.gain=c.createGain(); t.gain.gain.value=+vol.value/100; t.gain.connect(c.destination);
+      s.make(c,t.gain,t); t.on=true;
+    } else {
+      t.src.forEach(n=>{try{n.stop()}catch(e){}}); t.timers.forEach(clearTimeout);
+      t.src=[]; t.timers=[]; t.gain.disconnect(); t.on=false;
+    }
+    btn.setAttribute('aria-pressed',t.on);
+    btn.setAttribute('aria-label',(t.on?'暫停':'播放')+s.name);
+    btn.innerHTML=t.on?ICON_PAUSE:ICON_PLAY;
+  };
+  vol.oninput=()=>{ if(s.track.gain) s.track.gain.gain.value=+vol.value/100; };
+  $('soundList').appendChild(row);
+});
+
+/* ===== 待辦清單 ===== */
+let tasks=[];
+try{ tasks=JSON.parse(localStorage.getItem('pomo-tasks')||'[]'); }catch(e){}
+const save=()=>{ try{localStorage.setItem('pomo-tasks',JSON.stringify(tasks));}catch(e){} };
+function renderTasks(){
+  const ul=$('tasks'); ul.innerHTML='';
+  if(!tasks.length){ ul.innerHTML='<li class="empty" style="border:0">還沒有任務，先寫下第一件事吧。</li>'; return; }
+  tasks.forEach((t,i)=>{
+    const li=document.createElement('li'); if(t.done) li.className='done';
+    const b=document.createElement('button'); b.className='t'; b.textContent=t.text;
+    b.setAttribute('aria-pressed',t.done); b.title='點擊切換完成狀態';
+    b.onclick=()=>{ t.done=!t.done; save(); renderTasks(); };
+    const x=document.createElement('button'); x.className='x'; x.textContent='×'; x.setAttribute('aria-label','刪除任務：'+t.text);
+    x.onclick=()=>{ tasks.splice(i,1); save(); renderTasks(); };
+    li.append(b,x); ul.appendChild(li);
+  });
+}
+function addTask(){
+  const v=$('taskInput').value.trim(); if(!v) return;
+  tasks.push({text:v,done:false}); $('taskInput').value=''; save(); renderTasks(); $('taskInput').focus();
+}
+$('addBtn').onclick=addTask;
+$('taskInput').addEventListener('keydown',e=>{ if(e.key==='Enter') addTask(); });
+renderTasks(); render();
+
+/* ===== 每日紀錄 ===== */
+const dayKey=(d=new Date())=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+let log={};
+try{ log=JSON.parse(localStorage.getItem('pomo-log')||'{}'); }catch(e){}
+if(!log || typeof log!=='object' || Array.isArray(log)) log={};
+let shownDay=dayKey();
+const saveLog=()=>{ try{ localStorage.setItem('pomo-log',JSON.stringify(log)); }catch(e){} };
+function record(m){
+  const k=dayKey();
+  const e=log[k]||(log[k]={work:0,short:0,long:0});
+  e[m]=(Number(e[m])||0)+1;
+  saveLog(); renderStats();
+}
+function renderStats(){
+  shownDay=dayKey();
+  const num=(e,k)=>Number(e&&e[k])||0;
+  const t=log[shownDay];
+  $('count').textContent='今天完成 '+num(t,'work')+' 個番茄，休息 '+(num(t,'short')+num(t,'long'))+' 次';
+  const keys=Object.keys(log).filter(k=>k!==shownDay).sort().reverse().slice(0,6);
+  keys.unshift(shownDay);
+  const body=$('logBody'); body.innerHTML='';
+  keys.forEach(k=>{
+    const e=log[k], tr=document.createElement('tr');
+    const d=new Date(k+'T00:00:00');
+    let label=isNaN(d) ? k : d.toLocaleDateString('zh-TW',{month:'numeric',day:'numeric',weekday:'short'});
+    if(k===shownDay){ label='今天 '+label; tr.className='today'; }
+    [label,num(e,'work'),num(e,'short'),num(e,'long')].forEach(v=>{
+      const td=document.createElement('td'); td.textContent=v; tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+}
+$('clearLog').onclick=()=>{
+  if(confirm('確定要清除所有每日紀錄嗎？')){ log={}; saveLog(); renderStats(); }
+};
+renderStats();
+
+/* ===== 目前時間 ===== */
+function clock(){
+  const n=new Date();
+  if(dayKey(n)!==shownDay) renderStats();
+  $('clockTime').textContent=n.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
+  $('clockDate').textContent=n.toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+}
+clock(); setInterval(clock,1000);
+</script>
+</body>
+</html>
